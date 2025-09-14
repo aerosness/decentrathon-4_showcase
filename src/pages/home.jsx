@@ -255,10 +255,6 @@ const Home = () => {
                 <span className="result-label">Push содержат конкретные суммы</span>
               </div>
               <div className="result-item">
-                <span className="result-value">16.5%</span>
-                <span className="result-label">Годовых по депозиту Сберегательному</span>
-              </div>
-              <div className="result-item">
                 <span className="result-value">100%</span>
                 <span className="result-label">Уровень персонализации</span>
               </div>
