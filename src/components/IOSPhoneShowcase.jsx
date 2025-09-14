@@ -4,253 +4,208 @@ import './IOSPhoneShowcase.css';
 const IOSPhoneShowcase = () => {
   const [notifications, setNotifications] = useState([]);
   const [currentNotificationIndex, setCurrentNotificationIndex] = useState(0);
-  const [showNotification, setShowNotification] = useState(false);
+  const [notificationsData, setNotificationsData] = useState([]);
 
-  // Данные уведомлений из CSV в стиле iOS
-  const notificationsData = [
-    {
-      id: 1,
-      app: "Kaspi Bank",
-      title: "Депозит Сберегательный",
-      message: "Айгерим, у вас остаются свободные средства. Сберегательный вклад под 16,5% годовых без возможности снятия.",
-      time: "сейчас",
-      icon: "💰",
-      color: "#007AFF"
-    },
-    {
-      id: 2,
-      app: "Kaspi Bank",
-      title: "Карта для путешествий",
-      message: "Данияр, в августе у вас 143 поездок на такси на 276 795 ₸. С картой для путешествий вернули бы 11 072 ₸ кешбэком.",
-      time: "2 мин назад",
-      icon: "🚗",
-      color: "#FF9500"
-    },
-    {
-      id: 3,
-      app: "Kaspi Bank", 
-      title: "Депозит Накопительный",
-      message: "Тимур, у вас остаются свободные средства. Накопительный вклад под 15,5% годовых с возможностью пополнения.",
-      time: "5 мин назад",
-      icon: "📈",
-      color: "#34C759"
-    },
-    {
-      id: 4,
-      app: "Kaspi Bank",
-      title: "Кредитная карта",
-      message: "Нурия, ваши топ-категории — Продукты питания, Кафе и рестораны. Кредитная карта даёт до 10% кешбэка.",
-      time: "10 мин назад", 
-      icon: "💳",
-      color: "#FF3B30"
-    },
-    {
-      id: 5,
-      app: "Kaspi Bank",
-      title: "Обмен валют",
-      message: "Азамат, вы часто меняете валюту (10 057 045 ₸). В приложении выгодный курс 24/7 без комиссии.",
-      time: "15 мин назад",
-      icon: "💱",
-      color: "#5856D6"
-    },
-    {
-      id: 6,
-      app: "Kaspi Bank",
-      title: "Премиальная карта",
-      message: "Дамир, вы часто в ресторанах (176 440 ₸/мес). Премиальная карта вернёт 4% с этих трат.",
-      time: "20 мин назад",
-      icon: "⭐",
-      color: "#FF2D92"
+  // Функция для парсинга CSV данных
+  const parseCSV = (csvText) => {
+    const lines = csvText.trim().split('\n');
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      
+      // Более точный парсинг CSV с учетом кавычек
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current); // Добавляем последнее значение
+      
+      if (values.length >= 3) {
+        const clientCode = values[0];
+        const product = values[1];
+        const message = values[2];
+        
+        // Извлекаем имя из сообщения (первое слово после запятой)
+        const nameMatch = message.match(/^([А-Яа-я]+),/);
+        const name = nameMatch ? nameMatch[1] : `Клиент ${clientCode}`;
+        
+        data.push({
+          id: parseInt(clientCode),
+          name: name,
+          product: product,
+          message: message,
+          time: new Date(Date.now() - Math.random() * 3600000).toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        });
+      }
     }
-  ];
+    
+    return data;
+  };
 
+  // Загрузка данных из CSV файла
   useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch('/recommendations.csv');
+        const csvText = await response.text();
+        const parsedData = parseCSV(csvText);
+        setNotificationsData(parsedData.slice(0, 15)); // Берем первые 15 записей
+      } catch (error) {
+        console.error('Ошибка загрузки CSV:', error);
+        // Fallback данные если CSV не загрузился
+        setNotificationsData([
+          {
+            id: 1,
+            name: "Айгерим",
+            product: "Депозит",
+            message: "Айгерим, у вас есть возможность разместить свободные средства на депозите под 15%! Это отличный способ приумножить ваши финансы.",
+            time: "14:32"
+          }
+        ]);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  // Добавление уведомлений по одному
+  useEffect(() => {
+    if (notificationsData.length === 0) return;
+    
     const interval = setInterval(() => {
       if (currentNotificationIndex < notificationsData.length) {
-        const newNotification = notificationsData[currentNotificationIndex];
+        const newNotification = {
+          ...notificationsData[currentNotificationIndex],
+          id: Date.now() + currentNotificationIndex,
+          isNew: true
+        };
         
-        // Показываем уведомление с анимацией
-        setShowNotification(true);
-        setNotifications(prev => [newNotification, ...prev.slice(0, 3)]);
-        
-        // Скрываем анимацию через 3 секунды
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 3000);
-        
+        setNotifications(prev => [newNotification, ...prev.slice(0, 4)]); // Максимум 5 уведомлений
         setCurrentNotificationIndex(prev => prev + 1);
-      } else {
-        // Перезапускаем цикл с задержкой
+        
+        // Убираем флаг "новое" через 3 секунды
         setTimeout(() => {
-          setNotifications([]);
-          setCurrentNotificationIndex(0);
-        }, 2000);
+          setNotifications(prev => 
+            prev.map(n => n.id === newNotification.id ? {...n, isNew: false} : n)
+          );
+        }, 3000);
+      } else {
+        // Перезапускаем цикл
+        setCurrentNotificationIndex(0);
       }
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [currentNotificationIndex]);
+  }, [currentNotificationIndex, notificationsData]);
 
-  const handleNotificationTap = (notification) => {
-    // iOS-style haptic feedback simulation
-    if (navigator.vibrate) {
-      navigator.vibrate(10);
-    }
+  const handleNotificationClick = (notification) => {
+    // Убираем уведомление при клике
+    setNotifications(prev => prev.filter(n => n.id !== notification.id));
     
     // Показываем toast
     const toast = document.createElement('div');
     toast.className = 'ios-toast';
     toast.innerHTML = `
-      <div class="toast-icon">${notification.icon}</div>
-      <div class="toast-content">
-        <div class="toast-title">${notification.title}</div>
-        <div class="toast-message">Заявка отправлена!</div>
+      <div class="ios-toast-content">
+        <div class="ios-toast-icon">✅</div>
+        <div class="ios-toast-text">Заявка отправлена!</div>
       </div>
     `;
     document.body.appendChild(toast);
     
     setTimeout(() => {
-      toast.classList.add('toast-hide');
-      setTimeout(() => toast.remove(), 300);
-    }, 2500);
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 3000);
   };
 
   return (
     <div className="ios-phone-showcase">
-      <div className="phone-container">
-        {/* iPhone Frame with Real Image */}
-        <div className="iphone-frame">
-          <img 
-            src="/images/iphone.png" 
-            alt="iPhone" 
-            className="iphone-image"
-          />
-          
-          {/* Lock Screen Overlay */}
-          <div className="lock-screen-overlay">
-            {/* Status Bar */}
-            <div className="ios-status-bar">
-              <div className="status-left">
-                <span className="time">9:41</span>
-              </div>
-              <div className="status-right">
-                <span className="signal-bars">
-                  <span></span><span></span><span></span><span></span>
-                </span>
-                <span className="wifi-icon">📶</span>
-                <span className="battery">🔋</span>
-              </div>
-            </div>
-
-            {/* Date and Time */}
-            <div className="lock-screen-time">
-              <div className="date">Tuesday, August 15</div>
-              <div className="time-large">9:41</div>
-              {notifications.length > 0 && (
-                <div style={{
-                  fontSize: '12px', 
-                  opacity: 0.8, 
-                  marginTop: '8px',
-                  background: 'rgba(255,255,255,0.2)',
-                  padding: '4px 8px',
-                  borderRadius: '8px',
-                  display: 'inline-block'
-                }}>
-                  {notifications.length} уведомлений
-                </div>
-              )}
-            </div>
-
-            {/* Notifications Stack */}
-            <div className="notifications-stack">
-              {notifications.map((notification, index) => (
-                <div
-                  key={notification.id}
-                  className={`ios-notification ${index === 0 && showNotification ? 'notification-new' : ''}`}
-                  style={{
-                    zIndex: 100 - index,
-                    opacity: Math.max(0.7, 1 - index * 0.15)
-                  }}
-                  onClick={() => handleNotificationTap(notification)}
-                >
-                  <div className="notification-header">
-                    <div className="app-icon" style={{ backgroundColor: notification.color }}>
-                      {notification.icon}
-                    </div>
-                    <div className="app-info">
-                      <span className="app-name">{notification.app}</span>
-                      <span className="notification-time">{notification.time}</span>
-                    </div>
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-title">{notification.title}</div>
-                    <div className="notification-message">{notification.message}</div>
-                  </div>
-                </div>
-              ))}
-              
-              {notifications.length === 0 && (
-                <div className="no-notifications-ios">
-                  <div className="loading-dots">
-                    <span></span><span></span><span></span>
-                  </div>
-                  <p>Ожидание уведомлений...</p>
-                  <p style={{fontSize: '10px', opacity: 0.6}}>
-                    Индекс: {currentNotificationIndex}/{notificationsData.length}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Indicators */}
-            <div className="lock-screen-bottom">
-              <div className="camera-icon">📷</div>
-              <div className="home-indicator"></div>
-              <div className="flashlight-icon">🔦</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Info Panel */}
-      <div className="info-panel-ios">
-        <h3>🚀 AI-Powered Notifications</h3>
-        <div className="info-features">
-          <div className="info-feature">
-            <div className="feature-icon-ios">🧠</div>
-            <div>
-              <h4>Smart Analysis</h4>
-              <p>Анализ поведения клиентов в реальном времени</p>
-            </div>
-          </div>
-          <div className="info-feature">
-            <div className="feature-icon-ios">🎯</div>
-            <div>
-              <h4>Personalization</h4>
-              <p>Персонализированные предложения для каждого клиента</p>
-            </div>
-          </div>
-          <div className="info-feature">
-            <div className="feature-icon-ios">📊</div>
-            <div>
-              <h4>Performance</h4>
-              <p>Увеличение конверсии до 250%</p>
-            </div>
-          </div>
+      <div className="iphone-container">
+        {/* Фоновое изображение iPhone */}
+        <div className="iphone-background">
+          <img src="/images/iphone.png" alt="iPhone" />
         </div>
         
-        <div className="stats-ios">
-          <div className="stat-ios">
-            <span className="stat-number-ios">95%</span>
-            <span className="stat-label-ios">Точность</span>
-          </div>
-          <div className="stat-ios">
-            <span className="stat-number-ios">3x</span>
-            <span className="stat-label-ios">Конверсия</span>
-          </div>
-          <div className="stat-ios">
-            <span className="stat-number-ios">60+</span>
-            <span className="stat-label-ios">Продуктов</span>
+        {/* Область для уведомлений */}
+        <div className="notifications-overlay">
+          {notifications.map((notification, index) => (
+            <div
+              key={notification.id}
+              className={`ios-notification ${notification.isNew ? 'new' : ''}`}
+              style={{ 
+                top: `${10 + index * 80}px`,
+                animationDelay: `${index * 0.1}s`
+              }}
+              onClick={() => handleNotificationClick(notification)}
+            >
+              {/* Логотип банка */}
+              <div className="bank-logo">
+                <div className="bcc-logo">
+                  <img src="/images/bcc.png" alt="BCC Bank" />
+                </div>
+              </div>
+              
+              {/* Контент уведомления */}
+              <div className="notification-content">
+                <div className="notification-header">
+                  <span className="app-name">bcc.kz</span>
+                  <span className="notification-time">{notification.time}</span>
+                </div>
+                <div className="notification-body">
+                  {notification.message.substring(0, 120)}
+                  {notification.message.length > 120 ? '...' : ''}
+                </div>
+              </div>
+              
+              {/* Индикатор нового уведомления */}
+              {notification.isNew && <div className="new-indicator"></div>}
+            </div>
+          ))}
+        </div>
+        
+        {/* Информационная панель */}
+        <div className="info-section">
+          <h2>Персонализированные банковские уведомления</h2>
+          <div className="features">
+            <div className="feature">
+              <div className="feature-icon">🤖</div>
+              <div className="feature-text">
+                <h3>AI-анализ</h3>
+                <p>Искусственный интеллект анализирует ваши транзакции и поведение</p>
+              </div>
+            </div>
+            <div className="feature">
+              <div className="feature-icon">🎯</div>
+              <div className="feature-text">
+                <h3>Персонализация</h3>
+                <p>Подбираем именно те продукты, которые вам подходят</p>
+              </div>
+            </div>
+            <div className="feature">
+              <div className="feature-icon">📱</div>
+              <div className="feature-text">
+                <h3>Умные уведомления</h3>
+                <p>Получайте предложения в нужное время и в нужном месте</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
