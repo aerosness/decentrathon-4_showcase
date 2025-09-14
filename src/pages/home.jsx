@@ -68,7 +68,7 @@ const Home = () => {
             <div className="feature-card">
               <div className="feature-icon">⚡</div>
               <h3>Высокая скорость</h3>
-              <p>Обработка 60 клиентов за 1-2 минуты, стоимость всего $0.50 за полный цикл</p>
+              <p>Обработка 60 клиентов за 8-10 секунд, стоимость всего $0.50 за полный цикл</p>
             </div>
           </div>
         </div>
@@ -136,7 +136,7 @@ const Home = () => {
                 <span className="result-label">Персонализация с именами</span>
               </div>
               <div className="result-item">
-                <span className="result-value">1-2 мин</span>
+                <span className="result-value">8-10 секунд</span>
                 <span className="result-label">На 60 клиентов</span>
               </div>
             </div>
